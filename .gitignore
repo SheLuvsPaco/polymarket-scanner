@@ -40,3 +40,4 @@ temp/
 
 # Docker volumes (if any)
 docker-volumes/
+.env

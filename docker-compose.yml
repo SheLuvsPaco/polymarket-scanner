@@ -28,11 +28,9 @@ services:
     volumes:
       - .:/app
     working_dir: /app
-    command: sh -c "npx tsc && node dist/index.js"
+    command: sh -c "npm install && npx tsc && node dist/index.js"
     environment:
       - DATABASE_URL=postgresql://postgres:polymarketdb@db:5432/polymarket
-      - HTTPS_PROXY=socks5://host.docker.internal:1080
-      - HTTP_PROXY=socks5://host.docker.internal:1080
     dns:
       - 8.8.8.8
     extra_hosts:

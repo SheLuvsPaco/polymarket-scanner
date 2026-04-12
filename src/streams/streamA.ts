@@ -58,7 +58,7 @@ const fetchMarkets = async () => {
         console.log(`[Stream A] Context initialized. Tracking ${newCount} active markets.`);
 
         // Log context update to Telegram
-        NotificationService.logContextUpdate(newCount).catch(console.error);
+        // NotificationService.logContextUpdate(newCount).catch(console.error);
 
         // Trigger Stream B WebSocket dynamic update if needed.
         if (onUpdateCallback) {
