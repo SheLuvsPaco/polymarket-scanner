@@ -1,0 +1,42 @@
+# Environment & Credentials
+.env
+
+# Documentation
+*.md
+!CLAUDE.md
+
+# Planning Files
+.planning/
+MD Files/
+
+# Claude Code Files
+.claude/
+
+# Dependencies
+node_modules/
+
+# Build Output
+dist/
+
+# Logs
+*.log
+logs/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
+
+# Docker volumes (if any)
+docker-volumes/

@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: polymarket-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: polymarketdb
+      POSTGRES_DB: polymarket
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d polymarket" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    image: node:20-alpine
+    container_name: polymarket-app
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: sh -c "npx tsc && node dist/index.js"
+    environment:
+      - DATABASE_URL=postgresql://postgres:polymarketdb@db:5432/polymarket
+      - HTTPS_PROXY=socks5://host.docker.internal:1080
+      - HTTP_PROXY=socks5://host.docker.internal:1080
+    dns:
+      - 8.8.8.8
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  postgres_data:

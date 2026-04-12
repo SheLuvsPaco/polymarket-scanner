@@ -1,0 +1,34 @@
+{
+  "name": "polymarket",
+  "version": "1.0.0",
+  "description": "Polymarket Insider Trading Detection System",
+  "main": "index.js",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f app"
+  },
+  "keywords": ["polymarket", "insider-trading", "detection", "prediction-markets"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "ethers": "^6.16.0",
+    "https-proxy-agent": "^8.0.0",
+    "node-fetch": "^3.3.2",
+    "pg": "^8.20.0",
+    "socks-proxy-agent": "^9.0.0",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "@types/pg": "^8.18.0",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "type": "module"
+}
