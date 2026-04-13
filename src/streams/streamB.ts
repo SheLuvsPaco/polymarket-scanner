@@ -266,14 +266,15 @@ const flushBuffer = async () => {
                 t.clob_consumption_pct || null, t.implied_probability_entry || null,
                 t.z_score || null, t.signal_type || null, t.funding_source || null,
                 t.funder_nonce ?? null, t.funder_age_days ?? null, t.flow_ratio ?? null, t.is_dormant_wake_up ?? false,
-                t.funding_chain ? JSON.stringify(t.funding_chain) : null
+                t.funding_chain ? JSON.stringify(t.funding_chain) : null,
+                t.market_slug || null
             );
-            placeholders.push(`($${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++})`);
+            placeholders.push(`($${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++})`);
         }
 
         const query = `
             INSERT INTO trades 
-            (trade_id, market_id, side, price, size, value, timestamp, maker_address, taker_address, clob_consumption_pct, implied_probability_entry, z_score, signal_type, funding_source, funder_nonce, funder_age_days, flow_ratio, is_dormant_wake_up, funding_chain) 
+            (trade_id, market_id, side, price, size, value, timestamp, maker_address, taker_address, clob_consumption_pct, implied_probability_entry, z_score, signal_type, funding_source, funder_nonce, funder_age_days, flow_ratio, is_dormant_wake_up, funding_chain, market_slug) 
             VALUES ${placeholders.join(', ')}
             ON CONFLICT (trade_id) DO NOTHING;
         `;
@@ -289,20 +290,21 @@ const flushBuffer = async () => {
 
             for (const s of dirtyStates) {
                 wValues.push(
-                    s.market_id, s.count, s.mean, s.m2, s.is_calibrated, s.first_trade_at
+                    s.market_id, s.count, s.mean, s.m2, s.is_calibrated, s.first_trade_at, ContextMap.get(s.market_id)?.slug ?? null
                 );
-                wPlaceholders.push(`($${wIndex++}, $${wIndex++}, $${wIndex++}, $${wIndex++}, $${wIndex++}, $${wIndex++})`);
+                wPlaceholders.push(`($${wIndex++}, $${wIndex++}, $${wIndex++}, $${wIndex++}, $${wIndex++}, $${wIndex++}, $${wIndex++})`);
             }
 
             const wQuery = `
                 INSERT INTO market_baselines 
-                (market_id, count, mean, m2, is_calibrated, first_trade_at) 
+                (market_id, count, mean, m2, is_calibrated, first_trade_at, market_slug) 
                 VALUES ${wPlaceholders.join(', ')}
                 ON CONFLICT (market_id) DO UPDATE SET 
                     count = EXCLUDED.count,
                     mean = EXCLUDED.mean,
                     m2 = EXCLUDED.m2,
                     is_calibrated = EXCLUDED.is_calibrated,
+                    market_slug = EXCLUDED.market_slug,
                     first_trade_at = COALESCE(market_baselines.first_trade_at, EXCLUDED.first_trade_at),
                     last_updated_at = NOW();
             `;

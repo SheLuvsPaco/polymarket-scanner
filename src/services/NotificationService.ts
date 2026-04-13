@@ -410,7 +410,7 @@ export class NotificationService {
             // Top markets by volume
             const topMarkets = await pool.query(`
                 SELECT 
-                    market_id,
+                    market_id, MAX(market_slug) as market_slug,
                     COUNT(*) as trade_count,
                     SUM(value) as total_volume,
                     AVG(value) as avg_size,
@@ -438,7 +438,7 @@ export class NotificationService {
             // Top baselines by trade count
             const topBaselines = await pool.query(`
                 SELECT 
-                    market_id,
+                    market_id, market_slug,
                     count as trade_count,
                     mean,
                     CASE WHEN count > 1 THEN SQRT(m2 / (count - 1)) ELSE 0 END as std_dev,
@@ -472,7 +472,7 @@ export class NotificationService {
             // Top Markets
             report += `━━━ 🏆 TOP MARKETS BY VOLUME ━━━\n`;
             for (const m of topMarkets.rows) {
-                const shortId = m.market_id.substring(0, 10) + '...';
+                const shortId = m.market_slug || m.market_id.substring(0, 10) + '...';
                 report += `${shortId}\n`;
                 report += `  Trades: ${m.trade_count} | Vol: $${parseFloat(m.total_volume).toFixed(0)} | Max Z: ${m.max_z_score ? parseFloat(m.max_z_score).toFixed(2) : 'N/A'}\n`;
             }
@@ -489,7 +489,7 @@ export class NotificationService {
             // Top Baselines Detail
             report += `━━━ 📈 BASELINE DETAIL (Top 5) ━━━\n`;
             for (const b of topBaselines.rows) {
-                const shortId = b.market_id.substring(0, 10) + '...';
+                const shortId = b.market_slug || b.market_id.substring(0, 10) + '...';
                 const status = b.is_calibrated ? '✅' : '⏳';
                 const age = b.first_trade_at ? Math.floor((Date.now() - new Date(b.first_trade_at).getTime()) / 3600000) : 0;
                 report += `${status} ${shortId}\n`;
