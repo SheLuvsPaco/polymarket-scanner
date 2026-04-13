@@ -3,7 +3,7 @@ for (let page = 0; page < 4; page++) {
     const d = await f.json();
     for (const m of d) {
         if (m.active && m.closed === false) {
-            console.log((page*25 + d.indexOf(m) + 1) + ".", m.slug, "| $" + Math.round(parseFloat(m.volume24hr || 0)).toLocaleString());
+            console.log((page*25 + d.indexOf(m) + 1) + ". " + m.slug + " | $" + Math.round(parseFloat(m.volume24hr || 0)).toLocaleString());
         }
     }
 }
