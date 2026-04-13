@@ -28,7 +28,7 @@ const fetchMarkets = async () => {
 
         // Polymarket Gamma API - paginated fetch for broader coverage
         const PAGE_SIZE = 25;
-        const TOTAL_PAGES = 4;
+        const TOTAL_PAGES = 8;
         let data: GammaMarket[] = [];
         for (let page = 0; page < TOTAL_PAGES; page++) {
             const url = `${config.POLYMARKET_GAMMA_API}&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`;
