@@ -78,7 +78,7 @@ const connectWebSocket = () => {
 
             // Fix 3: Handle Orderbook State Correctly
             if (msg.event === 'book' || msg.event === 'price_change') {
-                if (Array.isArray(msg.data)) {
+                {
                     for (const item of msg.data) {
                         const assetId = item.asset_id;
                         if (!assetId) continue;
@@ -113,15 +113,17 @@ const connectWebSocket = () => {
                 return; 
             }
 
-            // Only process trade events
-            if (msg.event !== 'trade') {
+            // Handle last_trade_price events (individual trade messages)
+            if (msg.event_type !== 'last_trade_price') {
                 return;
             }
 
-            // The Bouncer: Immediate array iteration and math filtering
-            if (Array.isArray(msg.data)) {
-                for (let i = 0; i < msg.data.length; i++) {
-                    const tradeData = msg.data[i];
+            // The Bouncer: Single trade processing
+            {
+                const tradeDataArr = [msg];
+                for (let i = 0; i < tradeDataArr.length; i++) {
+                    const tradeData = tradeDataArr[i];
+                    if (!tradeData) continue;
 
                     // Step 1: Size Validation
                     const size = parseFloat(tradeData.size || "0");
@@ -141,18 +143,19 @@ const connectWebSocket = () => {
                     }
 
                     // Phase 2: Feature Engineering
-                    const clob_consumption_pct = value / context.liquidity;
+                    const clob_consumption_pct = context.liquidity > 0 ? value / context.liquidity : 0;
+                    if (isNaN(clob_consumption_pct)) continue;
                     const implied_probability_entry = price;
 
                     // Step 3: Buffer array
                     const parsed: ParsedTrade = {
-                        trade_id: tradeData.id,
+                        trade_id: tradeData.transaction_hash || tradeData.id,
                         market_id: marketId,
                         side: tradeData.side as "BUY" | "SELL" | null,
                         price: price,
                         size: size,
                         value: value,
-                        timestamp: new Date(tradeData.timestamp),
+                        timestamp: new Date(parseInt(tradeData.timestamp)),
                         maker_address: tradeData.maker_address || null,
                         taker_address: tradeData.taker_address || null,
                         clob_consumption_pct: clob_consumption_pct,
@@ -373,6 +376,7 @@ export const updateSubscriptions = async () => {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
     const marketIds = Array.from(ContextMap.keys());
+    console.log(`[Stream B] updateSubscriptions called. ContextMap size: ${marketIds.length}`);
     if (marketIds.length > 0) {
         const assetIds: string[] = [];
         

@@ -21,7 +21,9 @@ export interface MarketContext {
 // --- Stream B (WebSocket) Types ---
 export interface PolyWebSocketMessage {
     event: string;
+    event_type?: string;
     data: any[];
+    [key: string]: any;
 }
 
 export interface PolyTradeEvent {

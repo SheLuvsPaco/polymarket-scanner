@@ -377,6 +377,134 @@ export class NotificationService {
         }
     }
 
+     /**
+     * Comprehensive 6-hour report with full system intelligence
+     */
+    public static async sendPeriodicReport() {
+        if (!config.TELEGRAM_BOT_TOKEN || !config.TELEGRAM_CHAT_ID) return;
+
+        const botToken = config.TELEGRAM_BOT_TOKEN;
+        const chatId = config.TELEGRAM_CHAT_ID;
+        const threadId = config.TELEGRAM_THREAD_ID;
+        const hoursBack = config.REPORT_INTERVAL_HOURS;
+
+        try {
+            // Trade summary
+            const tradeStats = await pool.query(`
+                SELECT 
+                    COUNT(*) as total_trades,
+                    COALESCE(SUM(value), 0) as total_volume,
+                    COALESCE(AVG(value), 0) as avg_trade_size,
+                    COALESCE(MAX(value), 0) as largest_trade,
+                    COUNT(CASE WHEN signal_type = 'POTENTIAL_SIGNAL' THEN 1 END) as potential_signals,
+                    COUNT(CASE WHEN signal_type = 'CONFIRMED_INSIDER' THEN 1 END) as confirmed_insiders,
+                    COUNT(CASE WHEN signal_type = 'DORMANT_STRIKE' THEN 1 END) as dormant_strikes,
+                    COUNT(CASE WHEN signal_type = 'RETAIL_WHALE' THEN 1 END) as retail_whales,
+                    COUNT(DISTINCT market_id) as unique_markets
+                FROM trades 
+                WHERE created_at > NOW() - INTERVAL '${hoursBack} hours'
+            `);
+
+            const ts = tradeStats.rows[0];
+
+            // Top markets by volume
+            const topMarkets = await pool.query(`
+                SELECT 
+                    market_id,
+                    COUNT(*) as trade_count,
+                    SUM(value) as total_volume,
+                    AVG(value) as avg_size,
+                    MAX(z_score) as max_z_score
+                FROM trades 
+                WHERE created_at > NOW() - INTERVAL '${hoursBack} hours'
+                GROUP BY market_id 
+                ORDER BY total_volume DESC 
+                LIMIT 5
+            `);
+
+            // Baseline health
+            const baselineStats = await pool.query(`
+                SELECT 
+                    COUNT(*) as total_baselines,
+                    COUNT(CASE WHEN is_calibrated = true THEN 1 END) as calibrated,
+                    COUNT(CASE WHEN is_calibrated = false THEN 1 END) as uncalibrated,
+                    AVG(count) as avg_trade_count,
+                    MAX(count) as max_trade_count
+                FROM market_baselines
+            `);
+
+            const bs = baselineStats.rows[0];
+
+            // Top baselines by trade count
+            const topBaselines = await pool.query(`
+                SELECT 
+                    market_id,
+                    count as trade_count,
+                    mean,
+                    CASE WHEN count > 1 THEN SQRT(m2 / (count - 1)) ELSE 0 END as std_dev,
+                    is_calibrated,
+                    first_trade_at
+                FROM market_baselines 
+                ORDER BY count DESC 
+                LIMIT 5
+            `);
+
+            // Build the report
+            let report = `📋 <b>COMPREHENSIVE REPORT</b>\n`;
+            report += `⏰ <b>Period:</b> Last ${hoursBack} hours\n`;
+            report += `📅 <b>Generated:</b> ${new Date().toISOString()}\n\n`;
+
+            // Trade Overview
+            report += `━━━ 📊 TRADE OVERVIEW ━━━\n`;
+            report += `Total Trades: ${ts.total_trades}\n`;
+            report += `Total Volume: $${parseFloat(ts.total_volume).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}\n`;
+            report += `Avg Trade Size: $${parseFloat(ts.avg_trade_size).toFixed(2)}\n`;
+            report += `Largest Trade: $${parseFloat(ts.largest_trade).toFixed(2)}\n`;
+            report += `Unique Markets: ${ts.unique_markets}\n\n`;
+
+            // Signal Summary
+            report += `━━━ 🚨 SIGNAL SUMMARY ━━━\n`;
+            report += `🔥 Confirmed Insiders: ${ts.confirmed_insiders}\n`;
+            report += `⚡ Dormant Strikes: ${ts.dormant_strikes}\n`;
+            report += `🟡 Potential Signals: ${ts.potential_signals}\n`;
+            report += `🐋 Retail Whales: ${ts.retail_whales}\n\n`;
+
+            // Top Markets
+            report += `━━━ 🏆 TOP MARKETS BY VOLUME ━━━\n`;
+            for (const m of topMarkets.rows) {
+                const shortId = m.market_id.substring(0, 10) + '...';
+                report += `${shortId}\n`;
+                report += `  Trades: ${m.trade_count} | Vol: $${parseFloat(m.total_volume).toFixed(0)} | Max Z: ${m.max_z_score ? parseFloat(m.max_z_score).toFixed(2) : 'N/A'}\n`;
+            }
+            report += `\n`;
+
+            // Welford Baselines
+            report += `━━━ 🧠 WELFORD BASELINES ━━━\n`;
+            report += `Total Baselines: ${bs.total_baselines}\n`;
+            report += `Calibrated: ${bs.calibrated} ✅\n`;
+            report += `Uncalibrated: ${bs.uncalibrated} ⏳\n`;
+            report += `Avg Trades/Market: ${parseFloat(bs.avg_trade_count || 0).toFixed(0)}\n`;
+            report += `Max Trades/Market: ${bs.max_trade_count || 0}\n\n`;
+
+            // Top Baselines Detail
+            report += `━━━ 📈 BASELINE DETAIL (Top 5) ━━━\n`;
+            for (const b of topBaselines.rows) {
+                const shortId = b.market_id.substring(0, 10) + '...';
+                const status = b.is_calibrated ? '✅' : '⏳';
+                const age = b.first_trade_at ? Math.floor((Date.now() - new Date(b.first_trade_at).getTime()) / 3600000) : 0;
+                report += `${status} ${shortId}\n`;
+                report += `  Trades: ${b.trade_count} | Mean: ${parseFloat(b.mean).toFixed(6)} | StdDev: ${parseFloat(b.std_dev).toFixed(6)} | Age: ${age}h\n`;
+            }
+
+            await this.sendToTelegram(botToken, chatId, threadId, report);
+            console.log(`[Report] Periodic report sent (${new Date().toISOString()})`);
+
+        } catch (e) {
+            console.error('[Report] Error generating report:', e);
+        }
+    }
+
+
     /**
      * Generic method to send a message to Telegram without trade-specific formatting
      */

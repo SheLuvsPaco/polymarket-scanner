@@ -48,6 +48,7 @@ const main = async () => {
         // Step 5: Start Heartbeat if enabled
         if (config.HEARTBEAT_ENABLED && config.TELEGRAM_BOT_TOKEN && config.TELEGRAM_CHAT_ID) {
             startHeartbeat();
+            startPeriodicReport();
         }
 
         // Send startup notification to Telegram
@@ -121,6 +122,22 @@ const startHeartbeat = () => {
 
     heartbeatInterval = setInterval(async () => {
         await sendHeartbeat();
+    }, intervalMs);
+};
+
+let reportInterval: NodeJS.Timeout | null = null;
+
+const startPeriodicReport = () => {
+    const intervalMs = config.REPORT_INTERVAL_HOURS * 60 * 60 * 1000;
+    console.log(`[Report] Starting periodic report every ${config.REPORT_INTERVAL_HOURS} hours...`);
+    
+    // Send first report after 1 minute to confirm it works
+    setTimeout(async () => {
+        await NotificationService.sendPeriodicReport();
+    }, 60000);
+
+    reportInterval = setInterval(async () => {
+        await NotificationService.sendPeriodicReport();
     }, intervalMs);
 };
 

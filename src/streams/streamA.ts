@@ -26,14 +26,21 @@ const fetchMarkets = async () => {
         // Let's assume hitting the active markets URL. 
         console.log(`[Stream A] Fetching market context from Gamma API at ${new Date().toISOString()}`);
 
-        // Polymarket Gamma API for active markets
-        const response = await fetch(config.POLYMARKET_GAMMA_API);
-
-        if (!response.ok) {
-            throw new Error(`Gamma API returned ${response.status}`);
+        // Polymarket Gamma API - paginated fetch for broader coverage
+        const PAGE_SIZE = 25;
+        const TOTAL_PAGES = 4;
+        let data: GammaMarket[] = [];
+        for (let page = 0; page < TOTAL_PAGES; page++) {
+            const url = `${config.POLYMARKET_GAMMA_API}&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`;
+            const response = await fetch(url);
+            if (!response.ok) {
+                console.warn(`[Stream A] Gamma API page ${page} returned ${response.status}, skipping.`);
+                continue;
+            }
+            const pageData = (await response.json()) as GammaMarket[];
+            if (pageData.length === 0) break;
+            data.push(...pageData);
         }
-
-        const data = (await response.json()) as GammaMarket[];
 
         let newCount = 0;
 
@@ -41,15 +48,21 @@ const fetchMarkets = async () => {
         ContextMap.clear();
 
         // Populate the Shared Context Map
-        for (const market of data) {
-            // Ensure market is active, not closed.
+         for (const market of data) {
             if (market.active && !market.closed) {
                 const liquidity = parseFloat(market.liquidity || "0");
-                ContextMap.set(market.id, {
-                    market_id: market.id,
+                const tokenIds = typeof market.clobTokenIds === 'string' 
+                    ? JSON.parse(market.clobTokenIds) 
+                    : (market.clobTokenIds || []);
+                ContextMap.set(market.conditionId, {
+                    market_id: market.conditionId,
                     liquidity: liquidity,
-                    slug: market.slug || market.id,
-                    is_active: true
+                    slug: market.slug || market.conditionId,
+                    is_active: true,
+                    tokens: tokenIds.map((tid: string) => ({
+                        outcome: '',
+                        token_id: tid
+                    }))
                 });
                 newCount++;
             }

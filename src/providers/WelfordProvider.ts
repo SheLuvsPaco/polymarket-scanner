@@ -24,6 +24,8 @@ export class WelfordProvider {
     }
 
     public addTrade(marketId: string, value: number, clobConsumptionPct: number) {
+        // Guard against NaN/Infinity inputs
+        if (isNaN(value) || isNaN(clobConsumptionPct) || !isFinite(value) || !isFinite(clobConsumptionPct)) return;
         // Data Poisoning Prevention: Outlier Exclusion Rule
         if (clobConsumptionPct > config.WELFORD_OUTLIER_PCT) {
             console.warn(`[WelfordProvider] OUTLIER DROPPED - Market: ${marketId} | Clob Consumption: ${(clobConsumptionPct * 100).toFixed(2)}% > ${config.WELFORD_OUTLIER_PCT * 100}% limit.`);
@@ -52,6 +54,7 @@ export class WelfordProvider {
         state.mean += delta / state.count;
         const delta2 = value - state.mean;
         state.m2 += delta * delta2;
+        if (isNaN(state.mean) || isNaN(state.m2)) { state.mean = 0; state.m2 = 0; state.count = 0; }
 
         state.is_dirty = true;
 

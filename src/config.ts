@@ -41,6 +41,8 @@ export const config = {
     // Heartbeat & Health Monitoring
     HEARTBEAT_INTERVAL_MINUTES: parseInt(process.env.HEARTBEAT_INTERVAL_MINUTES || '30', 10),
     HEARTBEAT_ENABLED: process.env.HEARTBEAT_ENABLED !== 'false', // true by default
+    REPORT_INTERVAL_HOURS: parseInt(process.env.REPORT_INTERVAL_HOURS || '6', 10),
+    REPORT_ENABLED: process.env.REPORT_ENABLED !== 'false',
 
     // Enhanced Telegram Logging
     LOG_STREAM_EVENTS: process.env.LOG_STREAM_EVENTS === 'true', // Log WebSocket events
