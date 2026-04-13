@@ -30,7 +30,20 @@ const POLYGONSCAN_API_KEY = config.POLYGONSCAN_API_KEY;
 export class ProxyTraceService {
 
     public static async evaluate(trade: ParsedTrade): Promise<void> {
-        const proxyAddress = trade.maker_address;
+        // Resolve maker_address from transaction_hash if not provided
+        let proxyAddress = trade.maker_address;
+        if (!proxyAddress && trade.trade_id && trade.trade_id.startsWith('0x')) {
+            try {
+                const tx = await provider.getTransaction(trade.trade_id);
+                if (tx && tx.from) {
+                    proxyAddress = tx.from;
+                    trade.maker_address = tx.from;
+                    console.log(`[ProxyHunter] Resolved address from tx: ${tx.from}`);
+                }
+            } catch (e) {
+                console.warn(`[ProxyHunter] Failed to resolve address from tx ${trade.trade_id}:`, e);
+            }
+        }
         if (!proxyAddress) {
             if (trade.signal_type === "POTENTIAL_SIGNAL" || trade.signal_type === "CONFIRMED_INSIDER" || trade.signal_type === "DORMANT_STRIKE") {
                 const latency = trade.timestamp_ws_receive ? Date.now() - trade.timestamp_ws_receive : 0;
